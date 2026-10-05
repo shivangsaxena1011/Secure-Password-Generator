@@ -61,13 +61,13 @@ export const PasswordDisplay: React.FC<PasswordDisplayProps> = ({
             </span>
           </div>
 
-          {/* Quick inline buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          {/* Quick inline buttons - full width on mobile for easy thumb tapping */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Show / Hide toggle */}
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="p-2.5 rounded-xl border border-slate-700/70 dark:border-slate-700/70 light:border-slate-300 bg-slate-800/70 dark:bg-slate-800/70 light:bg-white text-slate-300 dark:text-slate-300 light:text-slate-700 hover:text-white dark:hover:text-white light:hover:text-slate-900 hover:bg-slate-700/60 dark:hover:bg-slate-700/60 light:hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+              className="p-2.5 rounded-xl border border-slate-700/70 dark:border-slate-700/70 light:border-slate-300 bg-slate-800/70 dark:bg-slate-800/70 light:bg-white text-slate-300 dark:text-slate-300 light:text-slate-700 hover:text-white dark:hover:text-white light:hover:text-slate-900 hover:bg-slate-700/60 dark:hover:bg-slate-700/60 light:hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all shrink-0"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
               title={showPassword ? 'Hide password' : 'Show password'}
             >
@@ -78,7 +78,7 @@ export const PasswordDisplay: React.FC<PasswordDisplayProps> = ({
             <button
               type="button"
               onClick={onRegenerate}
-              className="p-2.5 rounded-xl border border-slate-700/70 dark:border-slate-700/70 light:border-slate-300 bg-slate-800/70 dark:bg-slate-800/70 light:bg-white text-slate-300 dark:text-slate-300 light:text-slate-700 hover:text-teal-400 dark:hover:text-teal-400 light:hover:text-teal-600 hover:bg-slate-700/60 dark:hover:bg-slate-700/60 light:hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
+              className="p-2.5 rounded-xl border border-slate-700/70 dark:border-slate-700/70 light:border-slate-300 bg-slate-800/70 dark:bg-slate-800/70 light:bg-white text-slate-300 dark:text-slate-300 light:text-slate-700 hover:text-teal-400 dark:hover:text-teal-400 light:hover:text-teal-600 hover:bg-slate-700/60 dark:hover:bg-slate-700/60 light:hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/50 transition-all shrink-0"
               aria-label="Regenerate password"
               title="Regenerate password"
             >
@@ -93,7 +93,7 @@ export const PasswordDisplay: React.FC<PasswordDisplayProps> = ({
             <button
               type="button"
               onClick={handleCopy}
-              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 shadow-md ${
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 shadow-md ${
                 copied
                   ? 'bg-emerald-500 text-slate-950 font-semibold ring-2 ring-emerald-400'
                   : 'bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-slate-950 font-semibold hover:shadow-teal-500/25 active:scale-95'
