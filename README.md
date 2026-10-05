@@ -1,49 +1,59 @@
 # SecurePass Generator
 
-> **Generate strong, secure passwords instantly.**
+> **Generate strong, secure passwords and passphrases instantly.**
 
-SecurePass Generator is a modern, client-side cryptographic utility designed to create high-entropy, customizable passwords and memorable passphrases with zero external dependencies, zero network requests, and zero data persistence.
+SecurePass Generator is a privacy-first, client-side cryptographic security utility built with React, TypeScript, and Tailwind CSS. It produces high-entropy randomized passwords and memorable passphrases with zero external network requests, zero backend dependencies, and zero persistent credential storage.
 
 ---
 
 ## Key Features
 
-- **Cryptographically Secure Randomness**: Uses `window.crypto.getRandomValues()` combined with rejection sampling to eliminate modulo bias.
-- **Strict Character Pool Guarantees**: Guarantees at least one character from each enabled character category (uppercase, lowercase, digits, symbols) before filling remaining positions.
-- **Cryptographic Shuffling**: Employs an unbiased Fisher-Yates shuffle powered by secure random integers to ensure uniform character distribution.
-- **Synchronized Length Controls**: Range slider and direct numeric stepper synchronized from 4 to 128 characters (default 16).
-- **Comprehensive Password Strength Meter**: Evaluates length, character set diversity, entropy, consecutive repetitions, and sequential patterns across 5 calibrated tiers (*Very Weak*, *Weak*, *Fair*, *Strong*, *Very Strong*).
-- **Estimated Shannon Entropy**: Approximates theoretical search space bits (`length × log2(pool_size)`) accompanied by brute-force time estimates and character pool metrics.
-- **One-Click Presets**:
-  - **Quick**: 12 characters, alphanumeric (letters & numbers).
-  - **Strong**: 16 characters, all 4 categories enabled (default).
-  - **Extra Strong**: 24 characters, full character pool.
-  - **Maximum**: 32 characters, maximum brute-force resistance.
-- **Memorable Passphrase Generator**: Optional secondary mode generating multi-word passphrases using curated wordlists, custom separators, word capitalization, and optional numeric suffixes.
-- **Real Clipboard Integration**: One-click copying with animated "Copied ✓" state feedback and automatic fallback for restricted environments.
-- **Volatile Session History**: Keeps the last 5 generated passwords purely in browser memory during the active session. History is completely wiped on tab closure and can be manually cleared anytime.
-- **Dark & Light Themes**: Dark mode by default with modern glassmorphism, glowing accents, smooth transitions, and persistent theme preference.
-- **Accessibility & Responsive Design**: Semantic HTML, full keyboard navigation, screen-reader-friendly ARIA attributes, and responsive layout across desktop, tablet, and mobile displays.
+- **Hardware-Backed Cryptographic Randomness**: Powered exclusively by the Web Cryptography API (`window.crypto.getRandomValues()`) with rejection sampling to eliminate modulo bias. Does not fall back to insecure pseudo-random sources (`Math.random()`).
+- **Strict Category Guarantees**: Guarantees at least one character from each enabled character category (uppercase, lowercase, numerals, symbols) whenever requested length allows.
+- **Strict Consecutive Duplicate Invariant (`avoidRepeated`)**: Enforces `password[i] !== password[i + 1]` across all adjacent character positions without best-effort compromises.
+- **Ambiguous Character Filter**: Exclude visually confusing characters (such as `O`/`0`, `I`/`l`/`1`) to enhance usability and prevent transcription errors.
+- **Symbol Compatibility Modes**:
+  - **Standard Set** (27 symbols): `!@#$%^&*()-_=+[]{};:,.?/<>~`
+  - **Compatible Set** (14 symbols): `!@#$%^&*()-_=+` (ideal for legacy banking systems and restrictive enterprise portals).
+- **Synchronized Length Controls**: Range slider, direct numeric stepper, and one-click quick length buttons (`12`, `16`, `20`, `32`, `64`).
+- **Carefully Calibrated Strength Estimate**:
+  - Wording: *Password Strength Estimate*
+  - Heuristics based on length, character diversity, consecutive repetitions, sequential runs, and search space.
+  - 5 tiers: *Very Weak*, *Weak*, *Fair*, *Strong*, and *Very Strong*.
+- **Estimated Search-Space Entropy**:
+  - **Character Passwords**: Approximated as $L \times \log_2(N)$ bits, where $L$ is password length and $N$ is active character pool size.
+  - **Passphrases**: Dedicated model based on wordlist size and options: $\text{wordCount} \times \log_2(\text{wordListSize}) + \text{suffixBits}$.
+  - Search-space complexity descriptions ($~2^B$ combinations) replacing misleading crack-time claims.
+- **Memorable Passphrase Generator**:
+  - Bundled local dictionary of 400+ distinct English words (zero remote downloads).
+  - Configurable word counts (3 to 8).
+  - Multiple separators (`-`, `_`, `.`, `+`, space).
+  - Word capitalization toggle.
+  - Optional random 2-digit numeric suffix (`10`–`99`).
+  - **Avoid duplicate words** mode ensuring unique words per passphrase.
+- **Session-Only Memory History**:
+  - Opt-in session history toggle.
+  - Keeps at most 5 generated credentials purely in volatile React state.
+  - Completely erased when the tab or browser session is closed.
+  - No credential data is ever persisted to `localStorage`, `sessionStorage`, cookies, or IndexedDB.
+- **Dark & Light Mode**: Default dark theme with high-contrast glassmorphism and persistent theme preference.
+- **Zero Remote Dependencies & True Offline Execution**: No external Google Fonts, no external CDNs, and no analytics or telemetry scripts.
+- **Production-Ready Vercel Configuration**: Pre-configured with strict security headers (Content-Security-Policy, X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy).
 
 ---
 
 ## Security Architecture
 
-### Why Secure Randomness Matters
+### Cryptographic Randomness & Rejection Sampling
 
-Standard pseudo-random number generators (such as `Math.random()`) are deterministic PRNGs (often based on xoshiro or Mersenne Twister). They are optimized for speed and statistical uniformity in simulations, **not for cryptographic unpredictability**. An adversary who observes a few outputs can reconstruct the internal PRNG state and predict subsequent passwords.
-
-SecurePass Generator strictly utilizes the Web Cryptography API:
+Standard PRNGs (such as `Math.random()`) are predictable and inappropriate for cryptographic key generation. SecurePass Generator uses operating system entropy via the Web Crypto API:
 
 ```ts
-window.crypto.getRandomValues(uint32Buffer);
+const cryptoInstance = window.crypto;
+cryptoInstance.getRandomValues(uint32Buffer);
 ```
 
-This interface draws entropy directly from underlying operating system sources (e.g., `/dev/urandom` on Unix-like systems, or `CryptGenRandom`/CNG on Windows).
-
-### Zero Modulo Bias via Rejection Sampling
-
-A naive mapping such as `rand % max` introduces statistical bias when the range of random integers (e.g., $2^{32}$) is not an exact multiple of `max`. SecurePass Generator employs rejection sampling:
+To eliminate modulo bias when mapping 32-bit random integers into bounded ranges $[0, \text{max})$, rejection sampling discards values falling beyond the largest multiple of `max` $\le 2^{32}$:
 
 ```ts
 const limit = Math.floor(4294967296 / max) * max;
@@ -55,39 +65,28 @@ do {
 return rand % max;
 ```
 
-Any sample falling in the remainder zone is discarded, guaranteeing an exact uniform distribution across all characters.
+### Safe Failure Guarantee
 
-### Password Strength & Entropy Engine
+If the Web Cryptography API is unavailable in an execution environment (e.g. archaic browsers or insecure contexts), SecurePass Generator refuses to generate passwords and displays a clear security alert. It **never** silently falls back to pseudo-random numbers.
 
-The password strength engine evaluates multiple threat vectors:
+### Theoretical Search-Space Entropy Models
 
-1. **Shannon Entropy Approximation**:
+1. **Character Mode**:
    $$\text{Entropy} \approx L \times \log_2(N)$$
-   where $L$ is password length and $N$ is the active character pool size (e.g., $N = 26 + 26 + 10 + 27 = 89$).
-2. **Character Set Diversity**: Evaluates presence of uppercase letters, lowercase letters, numerals, and special punctuation.
-3. **Pattern Penalties**: Detects and penalizes:
-   - Consecutive repeating characters (e.g., `aaaa`).
-   - Ascending or descending sequential runs (e.g., `abc`, `123`).
-   - Single-character-set monotony.
+   Calculates theoretical search space based on uniform distribution across the selected character pool.
+
+2. **Passphrase Mode**:
+   $$\text{Entropy} \approx W \times \log_2(D) + (\text{suffix ? } \log_2(90) : 0)$$
+   where $W$ is the word count and $D$ is the dictionary size.
 
 ---
 
-## Privacy First Guarantee
+## Privacy Architecture
 
-- **No Remote Servers**: Password generation occurs 100% locally inside the user's browser runtime.
-- **No Network Requests**: The application makes zero API calls, telemetry pings, or analytics transmissions.
-- **No Plaintext Logging**: Passwords are never written to browser console logs, external services, or URL query parameters.
-- **No Unsolicited Persistence**: Generated passwords are never saved to `localStorage`, `sessionStorage`, or cookies. Only the user's preferred visual theme (dark/light) is stored.
-
----
-
-## Tech Stack
-
-- **Framework**: React 19 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Icons**: Lucide React
-- **Testing**: Vitest + Testing Library
+- **Client-Side Only**: All logic executes directly in the user's browser runtime.
+- **Zero Remote Storage**: Passwords are never sent over the network or saved to remote databases.
+- **Zero Password Logging**: Passwords are never written to `console.log`, analytics trackers, or URLs.
+- **Zero External Fonts or Assets**: Operates entirely from bundled static assets.
 
 ---
 
@@ -95,39 +94,36 @@ The password strength engine evaluates multiple threat vectors:
 
 ### Prerequisites
 
-- Node.js (version 18+ or 20+ recommended)
-- npm (or compatible package manager)
+- Node.js 18+ or 20+
+- npm
 
 ### Installation
 
 ```bash
-# Install dependencies
 npm install
 ```
 
-### Running Locally
+### Start Development Server
 
 ```bash
-# Start Vite development server
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173`.
+The application runs on `http://localhost:5173`.
 
-### Running Tests
+### Run Tests
 
 ```bash
-# Execute Vitest test suite
+# Run test suite
 npm test
 
 # Run tests in watch mode
 npm run test:watch
 ```
 
-### Linting
+### Run Linter
 
 ```bash
-# Run linter
 npm run lint
 ```
 
@@ -141,10 +137,24 @@ npm run build
 npm run preview
 ```
 
-The compiled assets will be located in the `dist/` directory, ready for deployment to any static web server (such as Cloudflare Pages, Vercel, Netlify, or AWS S3/CloudFront).
+---
+
+## Vercel Deployment
+
+Deploying to Vercel is seamless:
+
+1. Push your repository to GitHub.
+2. In the Vercel dashboard, click **Add New Project** and import the repository.
+3. Vercel automatically detects the Vite build configuration:
+   - **Framework Preset**: `Vite`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Click **Deploy**.
+
+Security headers (CSP, X-Content-Type-Options, etc.) are applied automatically via `vercel.json`.
 
 ---
 
 ## Security Disclaimer
 
-SecurePass Generator is designed to produce strong, cryptographically randomized passwords and passphrases. Strength estimates and entropy scores are mathematical approximations based on search space complexity. No password utility can guarantee absolute security against compromised hardware, keyloggers, phishing attacks, or social engineering. Users are encouraged to store generated credentials in a secure, audited password manager and enable multi-factor authentication (MFA) whenever supported.
+SecurePass Generator is designed to generate strong random passwords and passphrases locally. Strength and entropy estimates are mathematical approximations based on search-space complexity. No password generator can guarantee 100% immunity against compromised endpoints, malware, keyloggers, or phishing attacks. Users are advised to store credentials in a reputable encrypted password manager and enable multi-factor authentication (MFA) on all critical accounts.

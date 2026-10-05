@@ -1,0 +1,17 @@
+{
+  "name": "SecurePass Generator",
+  "short_name": "SecurePass",
+  "description": "Generate strong, secure passwords and passphrases locally in your browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

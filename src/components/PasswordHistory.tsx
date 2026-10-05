@@ -7,6 +7,8 @@ interface PasswordHistoryProps {
   history: HistoryItem[];
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  enableSessionHistory: boolean;
+  setEnableSessionHistory: (enabled: boolean) => void;
   onClear: () => void;
 }
 
@@ -14,6 +16,8 @@ export const PasswordHistory: React.FC<PasswordHistoryProps> = ({
   history,
   isOpen,
   setIsOpen,
+  enableSessionHistory,
+  setEnableSessionHistory,
   onClear,
 }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -51,7 +55,7 @@ export const PasswordHistory: React.FC<PasswordHistoryProps> = ({
         >
           <History className="w-4 h-4 text-teal-400" />
           <span className="text-sm font-semibold text-slate-200 dark:text-slate-200 light:text-slate-800">
-            Session Password History
+            Session History
           </span>
           <span className="text-xs font-mono font-bold text-slate-400 dark:text-slate-400 light:text-slate-600 bg-slate-800 dark:bg-slate-800 light:bg-slate-200 px-2 py-0.5 rounded-full">
             {history.length} / 5
@@ -64,7 +68,7 @@ export const PasswordHistory: React.FC<PasswordHistoryProps> = ({
               type="button"
               onClick={onClear}
               className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 px-2.5 py-1 rounded-lg border border-rose-500/20 hover:bg-rose-500/10 transition-colors"
-              title="Clear all generated passwords in this session"
+              title="Clear all session history entries"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Clear</span>
@@ -84,18 +88,36 @@ export const PasswordHistory: React.FC<PasswordHistoryProps> = ({
 
       {/* Accordion Content */}
       {isOpen && (
-        <div className="px-4 pb-5 sm:px-5 border-t border-slate-800/60 dark:border-slate-800/60 light:border-slate-200 pt-3 animate-fadeIn">
-          {/* Security badge note */}
-          <div className="mb-3 text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-600 bg-slate-950/40 dark:bg-slate-950/40 light:bg-slate-100 p-2 rounded-lg border border-slate-800/40 flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-            <span>
-              Volatile memory only: history is wiped when this tab is closed. No passwords are persisted to disk or servers.
-            </span>
+        <div className="px-4 pb-5 sm:px-5 border-t border-slate-800/60 dark:border-slate-800/60 light:border-slate-200 pt-3 animate-fadeIn space-y-3">
+          {/* Privacy Note & History Opt-in Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/40 dark:bg-slate-950/40 light:bg-slate-100 border border-slate-800/40">
+            <div className="flex items-start gap-2 text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-600">
+              <Shield className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
+              <span>
+                Session-only history. Generated passwords remain in memory for this tab and are cleared when the tab/page session ends.
+              </span>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer self-end sm:self-center shrink-0">
+              <input
+                type="checkbox"
+                checked={enableSessionHistory}
+                onChange={(e) => setEnableSessionHistory(e.target.checked)}
+                className="w-3.5 h-3.5 rounded text-teal-500 focus:ring-teal-400 bg-slate-800 border-slate-700"
+              />
+              <span className="text-xs font-semibold text-slate-300 dark:text-slate-300 light:text-slate-700">
+                Record Session History
+              </span>
+            </label>
           </div>
 
-          {history.length === 0 ? (
+          {!enableSessionHistory ? (
             <p className="text-xs text-slate-500 text-center py-4 italic">
-              No previous passwords generated yet.
+              Session history is disabled. Enable the toggle above to retain the last 5 passwords in temporary tab memory.
+            </p>
+          ) : history.length === 0 ? (
+            <p className="text-xs text-slate-500 text-center py-4 italic">
+              No previous passwords generated yet in this session.
             </p>
           ) : (
             <div className="space-y-2">
@@ -120,18 +142,21 @@ export const PasswordHistory: React.FC<PasswordHistoryProps> = ({
                         <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-teal-300 font-mono">
                           {item.length} ch
                         </span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-cyan-300">
+                          {item.mode}
+                        </span>
                         <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
                           {item.strength}
                         </span>
                       </div>
 
-                      {/* Password line */}
+                      {/* Password string */}
                       <p className="font-mono text-xs text-slate-200 dark:text-slate-200 light:text-slate-800 truncate select-all">
                         {isRevealed ? item.password : '•'.repeat(Math.min(item.password.length, 24))}
                       </p>
                     </div>
 
-                    {/* Action buttons */}
+                    {/* Actions */}
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"

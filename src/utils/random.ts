@@ -1,24 +1,54 @@
 /**
- * Cryptographically secure random utilities using Web Crypto API.
+ * Cryptographically secure random utilities using the Web Cryptography API.
  * Ensures zero modulo bias via rejection sampling.
+ * Never falls back to pseudo-random generators (Math.random).
  */
 
+/**
+ * Checks whether the Web Cryptography API is available in the current environment.
+ */
+export function isCryptoAvailable(): boolean {
+  if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.getRandomValues === 'function') {
+    return true;
+  }
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    return true;
+  }
+  return false;
+}
+
 function getCrypto(): Crypto {
-  if (typeof window !== 'undefined' && window.crypto) {
+  if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.getRandomValues === 'function') {
     return window.crypto;
   }
-  if (typeof globalThis !== 'undefined' && globalThis.crypto) {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
     return globalThis.crypto;
   }
-  throw new Error('Cryptographically secure random number generator is not available.');
+  throw new Error('Web Cryptography API is unavailable. Cryptographically secure random generation cannot proceed.');
 }
 
 /**
  * Returns a cryptographically secure random integer in the range [0, max).
- * Uses rejection sampling to eliminate modulo bias.
+ * Uses rejection sampling on 32-bit unsigned integers to eliminate modulo bias.
+ *
+ * Requirements:
+ * - max must be a positive integer.
+ * - max === 1 returns 0.
+ * - invalid values (NaN, negative, zero, decimals, unsafe integers) throw RangeError.
  */
 export function secureRandomInt(max: number): number {
-  if (max <= 1) {
+  if (
+    typeof max !== 'number' ||
+    Number.isNaN(max) ||
+    !Number.isFinite(max) ||
+    !Number.isInteger(max) ||
+    !Number.isSafeInteger(max) ||
+    max <= 0
+  ) {
+    throw new RangeError(`secureRandomInt requires a positive safe integer max. Received: ${max}`);
+  }
+
+  if (max === 1) {
     return 0;
   }
 
@@ -26,7 +56,7 @@ export function secureRandomInt(max: number): number {
   const uint32Buffer = new Uint32Array(1);
 
   // 2^32 = 4294967296
-  // Calculate the largest multiple of `max` <= 2^32 to reject numbers that would cause bias.
+  // Rejection sampling threshold: largest multiple of `max` <= 2^32
   const limit = Math.floor(4294967296 / max) * max;
 
   let rand: number;

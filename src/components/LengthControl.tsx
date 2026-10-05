@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MIN_LENGTH, MAX_LENGTH } from '../utils/passwordGenerator';
+import { MIN_LENGTH, MAX_LENGTH, QUICK_LENGTHS } from '../utils/passwordGenerator';
 import { Minus, Plus } from 'lucide-react';
 
 interface LengthControlProps {
@@ -55,12 +55,11 @@ export const LengthControl: React.FC<LengthControlProps> = ({ length, setLength 
     }
   };
 
-  // Calculate percentage for styling the custom slider track fill
   const percentage = ((length - MIN_LENGTH) / (MAX_LENGTH - MIN_LENGTH)) * 100;
 
   return (
     <div className="w-full space-y-3">
-      {/* Label and synchronized direct numeric value control */}
+      {/* Label and synchronized numeric input */}
       <div className="flex items-center justify-between">
         <div>
           <label
@@ -132,8 +131,38 @@ export const LengthControl: React.FC<LengthControlProps> = ({ length, setLength 
         {/* Min and Max helper markers */}
         <div className="flex justify-between text-[11px] font-mono text-slate-500 dark:text-slate-500 light:text-slate-400 mt-1.5">
           <span>{MIN_LENGTH}</span>
-          <span className="text-teal-400 font-semibold">{length}</span>
+          <span className="text-teal-400 font-semibold">{length} chars</span>
           <span>{MAX_LENGTH}</span>
+        </div>
+      </div>
+
+      {/* Quick Length Buttons (Requirement 8: 12, 16, 20, 32, 64) */}
+      <div className="flex items-center gap-1.5 pt-1">
+        <span className="text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-500 mr-1">
+          Quick Lengths:
+        </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {QUICK_LENGTHS.map((qLen) => {
+            const isActive = length === qLen;
+            return (
+              <button
+                key={qLen}
+                type="button"
+                onClick={() => {
+                  setDraftValue(null);
+                  setLength(qLen);
+                }}
+                className={`text-xs font-mono font-medium px-2.5 py-1 rounded-lg border transition-all ${
+                  isActive
+                    ? 'border-teal-500 bg-teal-500/20 text-teal-300 font-bold ring-1 ring-teal-500/40 shadow-sm'
+                    : 'border-slate-800 dark:border-slate-800 light:border-slate-200 bg-slate-900/40 dark:bg-slate-900/40 light:bg-white text-slate-400 hover:text-slate-200 dark:hover:text-slate-200 light:hover:text-slate-800'
+                }`}
+                aria-label={`Set password length to ${qLen}`}
+              >
+                {qLen}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { calculatePasswordStrength } from '../utils/passwordStrength';
+import {
+  calculatePasswordStrength,
+  calculatePassphraseStrength,
+} from '../utils/passwordStrength';
 
 describe('calculatePasswordStrength', () => {
   it('handles empty or blank passwords', () => {
@@ -7,6 +10,7 @@ describe('calculatePasswordStrength', () => {
     expect(analysis.score).toBe(0);
     expect(analysis.label).toBe('Very Weak');
     expect(analysis.percentage).toBe(0);
+    expect(analysis.entropyModel).toBe('search-space');
   });
 
   it('rates very short passwords as Very Weak or Weak', () => {
@@ -53,9 +57,46 @@ describe('calculatePasswordStrength', () => {
     expect(sequential.hasSequential).toBe(true);
   });
 
-  it('provides actionable security feedback', () => {
+  it('provides actionable security feedback and clear explanation', () => {
     const weak = calculatePasswordStrength('abc');
     expect(weak.feedback.length).toBeGreaterThan(0);
-    expect(weak.feedback[0]).toContain('length');
+    expect(weak.explanation).toContain('estimate');
+  });
+});
+
+describe('calculatePassphraseStrength', () => {
+  it('evaluates passphrase strength based on word count and options', () => {
+    const weakPass = calculatePassphraseStrength('apple-banana-orange', {
+      wordCount: 3,
+      separator: '-',
+      capitalize: false,
+      includeNumber: false,
+    });
+    expect(weakPass.label).toBe('Weak');
+    expect(weakPass.entropyModel).toBe('passphrase');
+
+    const fairPass = calculatePassphraseStrength('Apple-Banana-Orange-Cherry', {
+      wordCount: 4,
+      separator: '-',
+      capitalize: true,
+      includeNumber: false,
+    });
+    expect(fairPass.label).toBe('Fair');
+
+    const strongPass = calculatePassphraseStrength('Apple-Banana-Orange-Cherry-Grape-42', {
+      wordCount: 5,
+      separator: '-',
+      capitalize: true,
+      includeNumber: true,
+    });
+    expect(strongPass.label).toBe('Strong');
+
+    const veryStrongPass = calculatePassphraseStrength('Apple-Banana-Orange-Cherry-Grape-Melon-42', {
+      wordCount: 6,
+      separator: '-',
+      capitalize: true,
+      includeNumber: true,
+    });
+    expect(veryStrongPass.label).toBe('Very Strong');
   });
 });

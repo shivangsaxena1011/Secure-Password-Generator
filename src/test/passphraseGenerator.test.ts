@@ -1,5 +1,55 @@
 import { describe, it, expect } from 'vitest';
-import { generatePassphrase } from '../utils/passphraseGenerator';
+import {
+  generatePassphrase,
+  validatePassphraseOptions,
+  ALLOWED_SEPARATORS,
+  PASSPHRASE_WORDS,
+} from '../utils/passphraseGenerator';
+
+describe('validatePassphraseOptions', () => {
+  it('rejects word count outside 3 to 8', () => {
+    expect(
+      validatePassphraseOptions({
+        wordCount: 2,
+        separator: '-',
+        capitalize: true,
+        includeNumber: true,
+      })
+    ).toContain('between 3 and 8');
+
+    expect(
+      validatePassphraseOptions({
+        wordCount: 9,
+        separator: '-',
+        capitalize: true,
+        includeNumber: true,
+      })
+    ).toContain('between 3 and 8');
+  });
+
+  it('rejects disallowed separators', () => {
+    expect(
+      validatePassphraseOptions({
+        wordCount: 4,
+        separator: '/',
+        capitalize: true,
+        includeNumber: true,
+      })
+    ).toBe('Invalid passphrase separator.');
+  });
+
+  it('accepts valid configurations across all supported separators', () => {
+    ALLOWED_SEPARATORS.forEach((sep) => {
+      const err = validatePassphraseOptions({
+        wordCount: 4,
+        separator: sep.value,
+        capitalize: true,
+        includeNumber: true,
+      });
+      expect(err).toBeNull();
+    });
+  });
+});
 
 describe('generatePassphrase', () => {
   it('generates the specified number of words', () => {
@@ -46,5 +96,28 @@ describe('generatePassphrase', () => {
     const lastPart = parts[4];
     expect(Number(lastPart)).toBeGreaterThanOrEqual(10);
     expect(Number(lastPart)).toBeLessThanOrEqual(99);
+  });
+
+  it('guarantees unique words when avoidDuplicates is true across 100 iterations', () => {
+    for (let i = 0; i < 100; i++) {
+      const passphrase = generatePassphrase({
+        wordCount: 6,
+        separator: '+',
+        capitalize: false,
+        includeNumber: false,
+        avoidDuplicates: true,
+      });
+
+      const words = passphrase.split('+');
+      expect(words).toHaveLength(6);
+      const uniqueWords = new Set(words);
+      expect(uniqueWords.size).toBe(6);
+    }
+  });
+
+  it('contains a sufficiently large local wordlist with zero duplicates', () => {
+    expect(PASSPHRASE_WORDS.length).toBeGreaterThan(300);
+    const uniqueWordSet = new Set(PASSPHRASE_WORDS);
+    expect(uniqueWordSet.size).toBe(PASSPHRASE_WORDS.length);
   });
 });

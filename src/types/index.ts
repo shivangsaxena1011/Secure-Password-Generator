@@ -1,9 +1,12 @@
+export type SymbolCompatibilityMode = 'standard' | 'compatible';
+
 export interface PasswordOptions {
   length: number;
   uppercase: boolean;
   lowercase: boolean;
   numbers: boolean;
   symbols: boolean;
+  symbolMode?: SymbolCompatibilityMode;
   excludeSimilar?: boolean;
   avoidRepeated?: boolean;
 }
@@ -23,7 +26,8 @@ export interface StrengthAnalysis {
   score: number; // 0 to 4
   percentage: number; // 0 to 100
   label: StrengthLevel;
-  entropy: number; // in bits
+  entropy: number; // in bits (theoretical search-space entropy)
+  entropyModel: 'search-space' | 'passphrase';
   length: number;
   characterTypes: number;
   poolSize: number;
@@ -35,6 +39,7 @@ export interface StrengthAnalysis {
   hasRepetition: boolean;
   hasSequential: boolean;
   feedback: string[];
+  explanation: string;
 }
 
 export interface HistoryItem {
@@ -43,6 +48,7 @@ export interface HistoryItem {
   timestamp: number;
   strength: StrengthLevel;
   length: number;
+  mode: 'password' | 'passphrase';
 }
 
 export interface PassphraseOptions {
@@ -50,4 +56,7 @@ export interface PassphraseOptions {
   separator: string;
   capitalize: boolean;
   includeNumber: boolean;
+  avoidDuplicates?: boolean;
 }
+
+export type GeneratorMode = 'password' | 'passphrase';

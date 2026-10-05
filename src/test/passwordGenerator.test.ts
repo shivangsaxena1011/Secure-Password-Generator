@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   generatePassword,
   validatePasswordOptions,
-  SIMILAR_CHARS,
+  AMBIGUOUS_CHARS,
   PRESETS,
+  COMPATIBLE_SYMBOLS,
+  QUICK_LENGTHS,
 } from '../utils/passwordGenerator';
 import type { PasswordOptions } from '../types';
 
@@ -49,7 +51,6 @@ describe('validatePasswordOptions', () => {
       numbers: true,
       symbols: true,
     });
-    // Length below min is triggered first if length < 4, but let's test length = 3 with 4 categories
     expect(error).toContain('must be at least');
   });
 
@@ -66,8 +67,8 @@ describe('validatePasswordOptions', () => {
 });
 
 describe('generatePassword', () => {
-  it('generates passwords of exact requested lengths', () => {
-    const lengths = [4, 8, 16, 24, 32, 64, 128];
+  it('generates passwords of exact requested lengths up to 128 characters', () => {
+    const lengths = [4, 8, 12, 16, 20, 24, 32, 64, 128];
     lengths.forEach((len) => {
       const pwd = generatePassword({
         length: len,
@@ -118,7 +119,7 @@ describe('generatePassword', () => {
     }
   });
 
-  it('guarantees at least 1 character from each enabled category (Requirement 4)', () => {
+  it('guarantees at least 1 character from each enabled category', () => {
     const options: PasswordOptions = {
       length: 16,
       uppercase: true,
@@ -127,7 +128,7 @@ describe('generatePassword', () => {
       symbols: true,
     };
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 100; i++) {
       const pwd = generatePassword(options);
       expect(/[A-Z]/.test(pwd)).toBe(true);
       expect(/[a-z]/.test(pwd)).toBe(true);
@@ -146,15 +147,33 @@ describe('generatePassword', () => {
       excludeSimilar: true,
     };
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 50; i++) {
       const pwd = generatePassword(options);
       for (const char of pwd) {
-        expect(SIMILAR_CHARS.has(char)).toBe(false);
+        expect(AMBIGUOUS_CHARS.has(char)).toBe(false);
       }
     }
   });
 
-  it('avoids consecutive repeats when avoidRepeated is true', () => {
+  it('supports symbol compatibility mode (standard vs compatible)', () => {
+    const compatibleOpts: PasswordOptions = {
+      length: 32,
+      uppercase: false,
+      lowercase: false,
+      numbers: false,
+      symbols: true,
+      symbolMode: 'compatible',
+    };
+
+    for (let i = 0; i < 30; i++) {
+      const pwd = generatePassword(compatibleOpts);
+      for (const ch of pwd) {
+        expect(COMPATIBLE_SYMBOLS.includes(ch)).toBe(true);
+      }
+    }
+  });
+
+  it('strictly preserves the avoidRepeated invariant across 250 randomized iterations', () => {
     const options: PasswordOptions = {
       length: 32,
       uppercase: true,
@@ -164,15 +183,36 @@ describe('generatePassword', () => {
       avoidRepeated: true,
     };
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 250; i++) {
       const pwd = generatePassword(options);
+      expect(pwd).toHaveLength(32);
       for (let j = 0; j < pwd.length - 1; j++) {
         expect(pwd[j]).not.toBe(pwd[j + 1]);
       }
     }
   });
 
-  it('throws error when options fail validation', () => {
+  it('strictly preserves avoidRepeated invariant with boundary lengths and small pools', () => {
+    // Length 4 with only 2 categories and avoidRepeated
+    const smallPoolOpts: PasswordOptions = {
+      length: 4,
+      uppercase: false,
+      lowercase: false,
+      numbers: true,
+      symbols: false,
+      avoidRepeated: true,
+    };
+
+    for (let i = 0; i < 50; i++) {
+      const pwd = generatePassword(smallPoolOpts);
+      expect(pwd).toHaveLength(4);
+      for (let j = 0; j < pwd.length - 1; j++) {
+        expect(pwd[j]).not.toBe(pwd[j + 1]);
+      }
+    }
+  });
+
+  it('throws validation error when options fail validation', () => {
     expect(() =>
       generatePassword({
         length: 2,
@@ -195,8 +235,8 @@ describe('generatePassword', () => {
   });
 });
 
-describe('Presets', () => {
-  it('defines valid presets with expected properties', () => {
+describe('Presets and Quick Lengths', () => {
+  it('defines valid presets with accurate descriptions and lengths', () => {
     expect(PRESETS.quick.options.length).toBe(12);
     expect(PRESETS.quick.options.symbols).toBe(false);
 
@@ -210,5 +250,9 @@ describe('Presets', () => {
       const pwd = generatePassword(preset.options);
       expect(pwd).toHaveLength(preset.options.length);
     });
+  });
+
+  it('includes standard quick lengths', () => {
+    expect(QUICK_LENGTHS).toEqual([12, 16, 20, 32, 64]);
   });
 });

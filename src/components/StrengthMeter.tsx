@@ -7,9 +7,8 @@ interface StrengthMeterProps {
 }
 
 export const StrengthMeter: React.FC<StrengthMeterProps> = ({ strength }) => {
-  const { score, label, length, characterTypes, feedback } = strength;
+  const { score, label, length, characterTypes, feedback, explanation, entropyModel } = strength;
 
-  // Segment colors based on score (0 to 4)
   const getSegmentColor = (segmentIndex: number) => {
     if (segmentIndex > score) {
       return 'bg-slate-800/80 dark:bg-slate-800/80 light:bg-slate-200';
@@ -58,7 +57,7 @@ export const StrengthMeter: React.FC<StrengthMeterProps> = ({ strength }) => {
             <ShieldAlert className="w-4 h-4 text-amber-400" />
           )}
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400 light:text-slate-500">
-            Password Strength
+            Password Strength Estimate
           </span>
         </div>
 
@@ -78,7 +77,7 @@ export const StrengthMeter: React.FC<StrengthMeterProps> = ({ strength }) => {
         aria-valuenow={score + 1}
         aria-valuemin={1}
         aria-valuemax={5}
-        aria-label={`Password strength: ${label}`}
+        aria-label={`Password strength estimate: ${label}`}
       >
         {[0, 1, 2, 3, 4].map((index) => (
           <div
@@ -88,24 +87,33 @@ export const StrengthMeter: React.FC<StrengthMeterProps> = ({ strength }) => {
         ))}
       </div>
 
-      {/* Bottom Metadata Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1 border-t border-slate-800/50 dark:border-slate-800/50 light:border-slate-200">
-        <div className="flex items-center gap-3 text-slate-400 dark:text-slate-400 light:text-slate-600">
-          <span className="font-medium text-slate-200 dark:text-slate-200 light:text-slate-700">
-            {length} characters
-          </span>
-          <span>•</span>
-          <span className="font-medium text-slate-200 dark:text-slate-200 light:text-slate-700">
-            {characterTypes} character type{characterTypes !== 1 ? 's' : ''}
-          </span>
+      {/* Metadata & Explanatory Caveat */}
+      <div className="space-y-1.5 pt-1 border-t border-slate-800/50 dark:border-slate-800/50 light:border-slate-200 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-slate-400 dark:text-slate-400 light:text-slate-600">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-slate-200 dark:text-slate-200 light:text-slate-700">
+              {length} characters
+            </span>
+            {entropyModel === 'search-space' && (
+              <>
+                <span>•</span>
+                <span className="font-medium text-slate-200 dark:text-slate-200 light:text-slate-700">
+                  {characterTypes} character type{characterTypes !== 1 ? 's' : ''}
+                </span>
+              </>
+            )}
+          </div>
+
+          {feedback.length > 0 && (
+            <span className="text-slate-400 dark:text-slate-400 light:text-slate-500 text-[11px] italic">
+              {feedback[0]}
+            </span>
+          )}
         </div>
 
-        {/* Quick hint from feedback */}
-        {feedback.length > 0 && (
-          <span className="text-slate-400 dark:text-slate-400 light:text-slate-500 text-[11px] italic truncate max-w-xs">
-            {feedback[0]}
-          </span>
-        )}
+        <p className="text-[10px] text-slate-500 dark:text-slate-500 light:text-slate-400 leading-tight">
+          {explanation}
+        </p>
       </div>
     </div>
   );

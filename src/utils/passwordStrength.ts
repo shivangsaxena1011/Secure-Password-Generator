@@ -1,12 +1,12 @@
-import type { PasswordOptions, StrengthAnalysis, StrengthLevel } from '../types';
-import { calculateEntropy, calculatePoolSize } from './entropy';
+import type { PasswordOptions, PassphraseOptions, StrengthAnalysis, StrengthLevel } from '../types';
+import { calculatePasswordEntropy, calculatePassphraseEntropy, calculatePoolSize } from './entropy';
 
 /**
- * Checks for repeated characters in the password.
+ * Checks for consecutive duplicate characters in a string.
  */
-function hasConsecutiveRepeats(password: string): boolean {
-  for (let i = 0; i < password.length - 1; i++) {
-    if (password[i] === password[i + 1]) {
+function hasConsecutiveRepeats(str: string): boolean {
+  for (let i = 0; i < str.length - 1; i++) {
+    if (str[i] === str[i + 1]) {
       return true;
     }
   }
@@ -14,25 +14,23 @@ function hasConsecutiveRepeats(password: string): boolean {
 }
 
 /**
- * Checks for sequential patterns (e.g., "abc", "123", "cba").
+ * Checks for sequential patterns (e.g. "abc", "123", "cba").
  */
-function hasSequentialPatterns(password: string): boolean {
-  const lower = password.toLowerCase();
+function hasSequentialPatterns(str: string): boolean {
+  const lower = str.toLowerCase();
   for (let i = 0; i < lower.length - 2; i++) {
     const code0 = lower.charCodeAt(i);
     const code1 = lower.charCodeAt(i + 1);
     const code2 = lower.charCodeAt(i + 2);
 
-    // Forward sequential: a, b, c
     if (code1 === code0 + 1 && code2 === code1 + 1) return true;
-    // Backward sequential: c, b, a
     if (code1 === code0 - 1 && code2 === code1 - 1) return true;
   }
   return false;
 }
 
 /**
- * Evaluates password strength based on multiple security characteristics.
+ * Evaluates strength estimate for a character-based password.
  */
 export function calculatePasswordStrength(
   password: string,
@@ -44,6 +42,7 @@ export function calculatePasswordStrength(
       percentage: 0,
       label: 'Very Weak',
       entropy: 0,
+      entropyModel: 'search-space',
       length: 0,
       characterTypes: 0,
       poolSize: 0,
@@ -54,7 +53,8 @@ export function calculatePasswordStrength(
       hasSymbols: false,
       hasRepetition: false,
       hasSequential: false,
-      feedback: ['Enter or generate a password.'],
+      feedback: ['Generate or enter a password to inspect.'],
+      explanation: 'Based on length, character diversity, and detectable patterns. This is an estimate, not a guarantee of resistance to real-world attacks.',
     };
   }
 
@@ -73,14 +73,14 @@ export function calculatePasswordStrength(
     : (hasUppercase ? 26 : 0) +
       (hasLowercase ? 26 : 0) +
       (hasNumbers ? 10 : 0) +
-      (hasSymbols ? 33 : 0);
+      (hasSymbols ? 27 : 0);
 
-  const entropy = calculateEntropy(length, poolSize > 0 ? poolSize : 1);
+  const entropy = calculatePasswordEntropy(length, poolSize > 0 ? poolSize : 1);
 
-  // Calculate composite numeric score (0 to 100)
+  // Heuristic score calculation (0 to 100)
   let rawScore = 0;
 
-  // 1. Length scoring
+  // Length scoring
   if (length < 8) {
     rawScore += length * 2.5; // max 17.5
   } else if (length <= 11) {
@@ -93,69 +93,60 @@ export function calculatePasswordStrength(
     rawScore += 85 + Math.min(15, (length - 20) * 1.5); // 85 to 100
   }
 
-  // 2. Character diversity scoring
-  rawScore += characterTypes * 6; // up to +24
+  // Diversity bonus
+  rawScore += characterTypes * 6;
   if (characterTypes === 4 && length >= 12) {
-    rawScore += 10; // full diversity synergy
+    rawScore += 10;
   }
 
-  // 3. Deductions for patterns
-  if (hasRepetition) {
-    rawScore -= 8;
-  }
-  if (hasSequential) {
-    rawScore -= 6;
-  }
-  if (characterTypes === 1) {
-    rawScore -= 18;
-  }
+  // Penalties
+  if (hasRepetition) rawScore -= 8;
+  if (hasSequential) rawScore -= 6;
+  if (characterTypes === 1) rawScore -= 18;
 
-  // Clamp raw score between 5 and 100
   const percentage = Math.max(5, Math.min(100, Math.round(rawScore)));
 
-  // Map to 5-level scale (0 to 4)
   let score = 0;
   let label: StrengthLevel = 'Very Weak';
-  let color = '#ef4444'; // Red
+  let color = '#ef4444';
 
   if (percentage < 30 || length < 7) {
     score = 0;
     label = 'Very Weak';
-    color = '#ef4444'; // Red
+    color = '#ef4444';
   } else if (percentage < 50 || length < 10) {
     score = 1;
     label = 'Weak';
-    color = '#f97316'; // Orange
+    color = '#f97316';
   } else if (percentage < 70 || length < 14) {
     score = 2;
     label = 'Fair';
-    color = '#eab308'; // Amber
+    color = '#eab308';
   } else if (percentage < 85 || length < 18) {
     score = 3;
     label = 'Strong';
-    color = '#06b6d4'; // Cyan
+    color = '#06b6d4';
   } else {
     score = 4;
     label = 'Very Strong';
-    color = '#10b981'; // Emerald
+    color = '#10b981';
   }
 
-  // Helpful actionable feedback
   const feedback: string[] = [];
   if (length < 12) {
-    feedback.push('Increase length to 12+ characters for significantly greater resilience.');
+    feedback.push('Increase length to 12+ characters for greater resistance.');
   }
   if (characterTypes < 3) {
-    feedback.push('Include a mix of letters, numbers, and symbols.');
+    feedback.push('Include letters, numbers, and symbols to expand the search space.');
   }
   if (hasRepetition) {
-    feedback.push('Avoid consecutive repeating characters.');
+    feedback.push('Consecutive duplicate characters detected.');
   }
   if (hasSequential) {
-    feedback.push('Avoid sequential character patterns like "abc" or "123".');
+    feedback.push('Sequential character runs (e.g. 123 or abc) detected.');
   }
   if (feedback.length === 0) {
-    feedback.push('Excellent balance of length, entropy, and character diversity.');
+    feedback.push('Balanced combination of length and character diversity.');
   }
 
   return {
@@ -163,6 +154,7 @@ export function calculatePasswordStrength(
     percentage,
     label,
     entropy,
+    entropyModel: 'search-space',
     length,
     characterTypes,
     poolSize,
@@ -174,5 +166,102 @@ export function calculatePasswordStrength(
     hasRepetition,
     hasSequential,
     feedback,
+    explanation: 'Based on length, character diversity, and detectable patterns. This is an estimate, not a guarantee of resistance to real-world attacks.',
+  };
+}
+
+/**
+ * Evaluates strength estimate specifically for a multi-word passphrase.
+ */
+export function calculatePassphraseStrength(
+  passphrase: string,
+  options: PassphraseOptions
+): StrengthAnalysis {
+  if (!passphrase || passphrase.length === 0) {
+    return {
+      score: 0,
+      percentage: 0,
+      label: 'Very Weak',
+      entropy: 0,
+      entropyModel: 'passphrase',
+      length: 0,
+      characterTypes: 0,
+      poolSize: 0,
+      color: '#ef4444',
+      hasUppercase: false,
+      hasLowercase: false,
+      hasNumbers: false,
+      hasSymbols: false,
+      hasRepetition: false,
+      hasSequential: false,
+      feedback: ['Generate a passphrase to inspect.'],
+      explanation: 'Passphrase entropy is estimated from the wordlist size and selected options, rather than arbitrary character combinations.',
+    };
+  }
+
+  const entropy = calculatePassphraseEntropy(options);
+  const wordCount = options.wordCount;
+
+  let score = 0;
+  let label: StrengthLevel = 'Very Weak';
+  let color = '#ef4444';
+  let percentage = 0;
+
+  if (wordCount <= 3) {
+    score = 1;
+    label = 'Weak';
+    color = '#f97316';
+    percentage = 40;
+  } else if (wordCount === 4) {
+    score = 2;
+    label = 'Fair';
+    color = '#eab308';
+    percentage = 65;
+  } else if (wordCount === 5) {
+    score = 3;
+    label = 'Strong';
+    color = '#06b6d4';
+    percentage = 80;
+  } else {
+    score = 4;
+    label = 'Very Strong';
+    color = '#10b981';
+    percentage = 95;
+  }
+
+  const feedback: string[] = [];
+  if (wordCount < 4) {
+    feedback.push('Use 4 or more words for significantly greater search-space protection.');
+  }
+  if (!options.includeNumber) {
+    feedback.push('Adding a numeric suffix increases search-space entropy.');
+  }
+  if (feedback.length === 0) {
+    feedback.push('Strong multi-word combination with high memorability.');
+  }
+
+  return {
+    score,
+    percentage,
+    label,
+    entropy,
+    entropyModel: 'passphrase',
+    length: passphrase.length,
+    characterTypes: [
+      /[A-Z]/.test(passphrase),
+      /[a-z]/.test(passphrase),
+      /[0-9]/.test(passphrase),
+      /[^A-Za-z0-9]/.test(passphrase),
+    ].filter(Boolean).length,
+    poolSize: 0,
+    color,
+    hasUppercase: /[A-Z]/.test(passphrase),
+    hasLowercase: /[a-z]/.test(passphrase),
+    hasNumbers: /[0-9]/.test(passphrase),
+    hasSymbols: /[^A-Za-z0-9]/.test(passphrase),
+    hasRepetition: false,
+    hasSequential: false,
+    feedback,
+    explanation: 'Passphrase entropy is estimated from the wordlist size and selected options, rather than arbitrary character combinations.',
   };
 }

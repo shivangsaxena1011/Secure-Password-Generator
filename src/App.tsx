@@ -13,13 +13,14 @@ import { SecurityNotice } from './components/SecurityNotice';
 import { Footer } from './components/Footer';
 import { usePasswordGenerator } from './hooks/usePasswordGenerator';
 import { useTheme } from './hooks/useTheme';
-import { KeyRound, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
+import { KeyRound, Sparkles, RefreshCw, AlertCircle, ShieldAlert } from 'lucide-react';
 
 export const App: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const securityNoticeRef = useRef<HTMLDivElement>(null);
 
   const {
+    isCryptoSupported,
     mode,
     setMode,
     password,
@@ -36,8 +37,11 @@ export const App: React.FC = () => {
     history,
     isHistoryOpen,
     setIsHistoryOpen,
+    enableSessionHistory,
+    setEnableSessionHistory,
     setLength,
     toggleOption,
+    setSymbolMode,
     applyPreset,
     generateNewPassword,
     clearHistory,
@@ -54,6 +58,22 @@ export const App: React.FC = () => {
 
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-4 flex flex-col items-center">
+        {/* Crypto Unavailable Critical Warning */}
+        {!isCryptoSupported && (
+          <div
+            role="alert"
+            className="w-full max-w-2xl mb-4 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-sm flex items-start gap-3"
+          >
+            <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Cryptographically Secure Randomness Unavailable</p>
+              <p className="text-xs text-rose-200/80 mt-1 leading-relaxed">
+                Your browser environment does not support the Web Cryptography API (<code>window.crypto.getRandomValues</code>). SecurePass Generator intentionally refuses to use insecure pseudo-random fallbacks. Please access this application using a modern, secure browser.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Hero Banner */}
         <Hero />
 
@@ -115,19 +135,20 @@ export const App: React.FC = () => {
               isRegenerating={isRegenerating}
             />
 
-            {/* 2. Real Password Strength Meter */}
+            {/* 2. Password Strength Estimate Meter */}
             <StrengthMeter strength={strength} />
 
             {/* 3. Controls based on active mode */}
             {mode === 'password' ? (
               <div className="space-y-6 pt-2">
-                {/* Length slider & synchronized numeric input */}
+                {/* Length slider & direct numeric input with quick length buttons */}
                 <LengthControl length={options.length} setLength={setLength} />
 
-                {/* Character category toggles */}
+                {/* Character category toggles & symbol compatibility */}
                 <CharacterOptions
                   options={options}
                   toggleOption={toggleOption}
+                  setSymbolMode={setSymbolMode}
                   warningMessage={warningMessage}
                 />
 
@@ -149,7 +170,8 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={generateNewPassword}
-                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-teal-500 via-teal-400 to-cyan-400 hover:from-teal-400 hover:to-cyan-300 text-slate-950 font-bold text-base tracking-wide shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40 active:scale-[0.99] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-teal-400/50"
+                disabled={!isCryptoSupported}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-teal-500 via-teal-400 to-cyan-400 hover:from-teal-400 hover:to-cyan-300 text-slate-950 font-bold text-base tracking-wide shadow-lg shadow-teal-500/25 hover:shadow-teal-500/40 active:scale-[0.99] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-teal-400/50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <RefreshCw
                   className={`w-5 h-5 transition-transform duration-300 ${
@@ -163,18 +185,20 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Advanced Metrics & Entropy Estimation */}
+          {/* Advanced Metrics & Estimated Search-Space Entropy */}
           <AdvancedInfo strength={strength} />
 
-          {/* In-Memory Local Password History */}
+          {/* In-Memory Local Password History (Session-only, Opt-in) */}
           <PasswordHistory
             history={history}
             isOpen={isHistoryOpen}
             setIsOpen={setIsHistoryOpen}
+            enableSessionHistory={enableSessionHistory}
+            setEnableSessionHistory={setEnableSessionHistory}
             onClear={clearHistory}
           />
 
-          {/* Privacy & Security Card */}
+          {/* Security & Privacy Architecture Principles */}
           <div ref={securityNoticeRef}>
             <SecurityNotice id="privacy-notice" />
           </div>

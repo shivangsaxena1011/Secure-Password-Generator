@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { StrengthAnalysis } from '../types';
 import { getEntropyRating } from '../utils/entropy';
-import { ChevronDown, ChevronUp, Cpu, Info, KeyRound, Timer } from 'lucide-react';
+import { ChevronDown, ChevronUp, Cpu, Info, KeyRound, Layers } from 'lucide-react';
+import { PASSPHRASE_WORDS } from '../utils/passphraseGenerator';
 
 interface AdvancedInfoProps {
   strength: StrengthAnalysis;
@@ -9,7 +10,7 @@ interface AdvancedInfoProps {
 
 export const AdvancedInfo: React.FC<AdvancedInfoProps> = ({ strength }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { entropy, length, characterTypes, poolSize, hasRepetition, hasSequential } = strength;
+  const { entropy, length, characterTypes, poolSize, hasRepetition, hasSequential, entropyModel } = strength;
   const rating = getEntropyRating(entropy);
 
   return (
@@ -24,15 +25,15 @@ export const AdvancedInfo: React.FC<AdvancedInfoProps> = ({ strength }) => {
         <div className="flex items-center gap-2.5">
           <Cpu className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-slate-200 dark:text-slate-200 light:text-slate-800">
-            Advanced Information & Entropy
+            {entropyModel === 'passphrase' ? 'Estimated Passphrase Entropy' : 'Estimated Search-Space Entropy'}
           </span>
           <span className="text-xs font-mono font-bold text-teal-400 dark:text-teal-400 light:text-teal-700 bg-teal-500/10 px-2 py-0.5 rounded-full border border-teal-500/20">
-            {entropy} bits
+            ~{entropy} bits
           </span>
         </div>
 
         <div className="flex items-center gap-1.5 text-xs text-slate-400">
-          <span className="hidden sm:inline">{isOpen ? 'Hide details' : 'Show details'}</span>
+          <span className="hidden sm:inline">{isOpen ? 'Hide metrics' : 'Show metrics'}</span>
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </button>
@@ -40,12 +41,12 @@ export const AdvancedInfo: React.FC<AdvancedInfoProps> = ({ strength }) => {
       {/* Expanded Metrics Details */}
       {isOpen && (
         <div className="px-4 pb-5 sm:px-5 space-y-4 pt-1 border-t border-slate-800/60 dark:border-slate-800/60 light:border-slate-200 animate-fadeIn">
-          {/* 3 Metric Cards */}
+          {/* Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Entropy */}
             <div className="p-3 rounded-xl bg-slate-950/60 dark:bg-slate-950/60 light:bg-white border border-slate-800 dark:border-slate-800 light:border-slate-200">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                Estimated Entropy
+                {entropyModel === 'passphrase' ? 'Passphrase Entropy' : 'Search-Space Entropy'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl font-bold font-mono text-teal-300 dark:text-teal-300 light:text-teal-700">
@@ -58,15 +59,15 @@ export const AdvancedInfo: React.FC<AdvancedInfoProps> = ({ strength }) => {
               </span>
             </div>
 
-            {/* Crack Time */}
+            {/* Complexity Tier */}
             <div className="p-3 rounded-xl bg-slate-950/60 dark:bg-slate-950/60 light:bg-white border border-slate-800 dark:border-slate-800 light:border-slate-200">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                Est. Brute-Force Time
+                Search Space Size
               </span>
               <div className="flex items-baseline gap-1.5">
-                <Timer className="w-4 h-4 text-cyan-400 shrink-0" />
+                <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
                 <span className="text-sm font-bold font-mono text-slate-200 dark:text-slate-200 light:text-slate-800 truncate">
-                  {rating.crackTimeEstimate}
+                  {rating.complexityTier}
                 </span>
               </div>
               <span className="text-[11px] text-slate-400 mt-1 block truncate">
@@ -74,48 +75,62 @@ export const AdvancedInfo: React.FC<AdvancedInfoProps> = ({ strength }) => {
               </span>
             </div>
 
-            {/* Pool Size & Diversity */}
+            {/* Pool Size or Wordlist Size */}
             <div className="p-3 rounded-xl bg-slate-950/60 dark:bg-slate-950/60 light:bg-white border border-slate-800 dark:border-slate-800 light:border-slate-200">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                Character Pool Size
+                {entropyModel === 'passphrase' ? 'Dictionary Size' : 'Character Pool Size'}
               </span>
               <div className="flex items-baseline gap-1.5">
                 <KeyRound className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="text-xl font-bold font-mono text-emerald-400 dark:text-emerald-400 light:text-emerald-700">
-                  {poolSize}
+                  {entropyModel === 'passphrase' ? PASSPHRASE_WORDS.length : poolSize}
                 </span>
-                <span className="text-xs text-slate-400">possible chars</span>
+                <span className="text-xs text-slate-400">
+                  {entropyModel === 'passphrase' ? 'unique words' : 'characters'}
+                </span>
               </div>
               <span className="text-[11px] text-slate-400 mt-1 block">
-                {characterTypes} active type{characterTypes !== 1 ? 's' : ''} across {length} pos
+                {entropyModel === 'passphrase'
+                  ? `~${Math.log2(PASSPHRASE_WORDS.length).toFixed(1)} bits per word`
+                  : `${characterTypes} active types across ${length} positions`}
               </span>
             </div>
           </div>
 
-          {/* Pattern warning tags if detected */}
+          {/* Pattern Advisory if applicable */}
           {(hasRepetition || hasSequential) && (
             <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start gap-2">
               <Info className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
               <div>
                 <p className="font-semibold">Pattern Advisory:</p>
                 <p className="text-amber-200/80 text-[11px]">
-                  {hasRepetition && 'Contains consecutive repeating characters. '}
-                  {hasSequential && 'Contains sequential character runs (e.g. 123 or abc). '}
-                  These slightly reduce real-world entropy.
+                  {hasRepetition && 'Consecutive duplicate characters detected. '}
+                  {hasSequential && 'Sequential runs detected. '}
+                  Detectable patterns can reduce practical brute-force resistance.
                 </p>
               </div>
             </div>
           )}
 
           {/* Formula explanation */}
-          <div className="text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-600 bg-slate-950/40 dark:bg-slate-950/40 light:bg-slate-100 p-2.5 rounded-lg border border-slate-800/40 leading-relaxed">
-            <span className="font-semibold text-slate-300 dark:text-slate-300 light:text-slate-700">
-              Formula:
-            </span>{' '}
-            <code className="font-mono bg-slate-800 px-1 py-0.5 rounded text-teal-300">
-              entropy ≈ length × log2(character_pool_size)
-            </code>
-            . Entropy estimates theoretical search space against brute-force attacks assuming uniformly distributed selection. It is not an absolute warranty against contextual attacks like phishing, shoulder surfing, or compromised endpoints.
+          <div className="text-[11px] text-slate-400 dark:text-slate-400 light:text-slate-600 bg-slate-950/40 dark:bg-slate-950/40 light:bg-slate-100 p-2.5 rounded-lg border border-slate-800/40 leading-relaxed space-y-1">
+            <p>
+              <span className="font-semibold text-slate-300 dark:text-slate-300 light:text-slate-700">
+                Formula:
+              </span>{' '}
+              {entropyModel === 'passphrase' ? (
+                <code className="font-mono bg-slate-800 px-1 py-0.5 rounded text-teal-300">
+                  wordCount × log2(wordListSize) + [numericSuffixBits]
+                </code>
+              ) : (
+                <code className="font-mono bg-slate-800 px-1 py-0.5 rounded text-teal-300">
+                  length × log2(character_pool_size)
+                </code>
+              )}
+            </p>
+            <p>
+              This is a theoretical search-space estimate based on uniform random selection from the configured options. Real-world resilience also depends on password hashing cost, storage security, and authentication rate limits.
+            </p>
           </div>
         </div>
       )}
