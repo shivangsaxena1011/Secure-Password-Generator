@@ -26,7 +26,7 @@ export const App: React.FC = () => {
     password,
     options,
     passphraseOptions,
-    setPassphraseOptions,
+    updatePassphraseOptions,
     activePreset,
     strength,
     validationError,
@@ -159,8 +159,7 @@ export const App: React.FC = () => {
               <div className="pt-2">
                 <PassphraseControls
                   options={passphraseOptions}
-                  setOptions={setPassphraseOptions}
-                  onGenerate={generateNewPassword}
+                  updateOptions={updatePassphraseOptions}
                 />
               </div>
             )}

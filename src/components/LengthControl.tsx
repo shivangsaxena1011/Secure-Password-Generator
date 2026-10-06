@@ -93,6 +93,11 @@ export const LengthControl: React.FC<LengthControlProps> = ({ length, setLength 
             value={displayValue}
             onChange={handleInputChange}
             onBlur={handleInputBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur();
+              }
+            }}
             aria-label="Direct password length numeric input"
             className="w-12 text-center font-mono font-bold text-sm bg-transparent text-teal-400 dark:text-teal-400 light:text-teal-700 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />

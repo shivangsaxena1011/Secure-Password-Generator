@@ -5,29 +5,24 @@ import { Check, Minus, Plus } from 'lucide-react';
 
 interface PassphraseControlsProps {
   options: PassphraseOptions;
-  setOptions: React.Dispatch<React.SetStateAction<PassphraseOptions>>;
-  onGenerate: () => void;
+  updateOptions: (updater: (prev: PassphraseOptions) => PassphraseOptions) => void;
 }
 
 export const PassphraseControls: React.FC<PassphraseControlsProps> = ({
   options,
-  setOptions,
-  onGenerate,
+  updateOptions,
 }) => {
   const updateWordCount = (count: number) => {
     const sanitized = Math.max(3, Math.min(8, count));
-    setOptions((prev) => ({ ...prev, wordCount: sanitized }));
-    setTimeout(onGenerate, 10);
+    updateOptions((prev) => ({ ...prev, wordCount: sanitized }));
   };
 
   const updateSeparator = (separator: string) => {
-    setOptions((prev) => ({ ...prev, separator }));
-    setTimeout(onGenerate, 10);
+    updateOptions((prev) => ({ ...prev, separator }));
   };
 
   const toggleOption = (key: keyof PassphraseOptions) => {
-    setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
-    setTimeout(onGenerate, 10);
+    updateOptions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   return (

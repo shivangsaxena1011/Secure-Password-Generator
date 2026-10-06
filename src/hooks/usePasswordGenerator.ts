@@ -248,6 +248,44 @@ export function usePasswordGenerator() {
     [options, handleGenerate]
   );
 
+  // Update passphrase options and regenerate synchronously
+  const updatePassphraseOptions = useCallback(
+    (updater: (prev: PassphraseOptions) => PassphraseOptions) => {
+      setPassphraseOptions((prev) => {
+        const next = updater(prev);
+        const err = validatePassphraseOptions(next);
+        if (err) {
+          setValidationError(err);
+        } else {
+          setValidationError(null);
+          try {
+            const newPassphrase = generatePassphrase(next);
+            setPassword(newPassphrase);
+            if (enableSessionHistory) {
+              const analysis = calculatePassphraseStrength(newPassphrase, next);
+              const newItem: HistoryItem = {
+                id: secureId(),
+                password: newPassphrase,
+                timestamp: Date.now(),
+                strength: analysis.label,
+                length: newPassphrase.length,
+                mode: 'passphrase',
+              };
+              setHistory((h) => [newItem, ...h.slice(0, MAX_HISTORY_ITEMS - 1)]);
+            }
+            setIsRegenerating(true);
+            if (regeneratingTimeoutRef.current) clearTimeout(regeneratingTimeoutRef.current);
+            regeneratingTimeoutRef.current = window.setTimeout(() => setIsRegenerating(false), 200);
+          } catch (e: any) {
+            setValidationError(e?.message || 'Error generating passphrase.');
+          }
+        }
+        return next;
+      });
+    },
+    [enableSessionHistory]
+  );
+
   // Apply a preset
   const applyPreset = useCallback(
     (presetKey: PresetKey) => {
@@ -318,6 +356,10 @@ export function usePasswordGenerator() {
           setHistory((prev) => [newItem, ...prev.slice(0, MAX_HISTORY_ITEMS - 1)]);
         }
       }
+
+      setIsRegenerating(true);
+      if (regeneratingTimeoutRef.current) clearTimeout(regeneratingTimeoutRef.current);
+      regeneratingTimeoutRef.current = window.setTimeout(() => setIsRegenerating(false), 200);
     },
     [mode, passphraseOptions, options, enableSessionHistory]
   );
@@ -341,6 +383,7 @@ export function usePasswordGenerator() {
     options,
     passphraseOptions,
     setPassphraseOptions,
+    updatePassphraseOptions,
     activePreset,
     strength,
     validationError,
